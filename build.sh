@@ -103,13 +103,15 @@ if [[ ! -x $CLANG_PATH/bin/clang || ! -f $CLANG_PATH/VERSION || "$(cat $CLANG_PA
         wget -qO clang-tarball "$CLANG_URL" || error "Failed to download Clang."
         tar -xf clang-tarball -C "$CLANG_PATH/" || error "Failed to extract Clang."
         rm -f clang-tarball
-        while [ "$(find "$CLANG_PATH" -mindepth 1 -maxdepth 1 -type d | wc -l)" -eq 1 ]; do
-            single_dir=$(find "$CLANG_PATH" -mindepth 1 -maxdepth 1 -type d)
-            mv "$single_dir"/* "$CLANG_PATH"/
-            rmdir "$single_dir"
-        done
     else
         git clone -q --depth=1 -b "$CUSTOM_CLANG_BRANCH" "$CLANG_URL" "$CLANG_PATH" || error "Clang download failed."
+    fi
+
+    if [[ $(find "$CLANG_PATH" -mindepth 1 -maxdepth 1 -type d | wc -l) -eq 1 ]] &&
+        [[ $(find "$CLANG_PATH" -mindepth 1 -maxdepth 1 -type f | wc -l) -eq 0 ]]; then
+        single_dir=$(find "$CLANG_PATH" -mindepth 1 -maxdepth 1 -type d)
+        mv "$single_dir"/* "$CLANG_PATH"/
+        rm -rf "$single_dir"
     fi
 
     echo "$CLANG_INFO" >"$CLANG_PATH/VERSION"
@@ -174,8 +176,38 @@ if [[ $KSU != "None" ]]; then
     done
 fi
 
+# Install KernelSU driver
+cd $workdir
+if [[ $KSU != "None" ]]; then
+    log "Installing KernelSU..."
+
+    case "$KSU" in
+    "Official") install_ksu tiann/KernelSU ;;
+    "Rissu") install_ksu rsuntk/KernelSU $([[ $USE_KSU_SUSFS == true ]] && echo susfs-v1.5.5 || echo main) ;;
+    "Next") install_ksu rifsxd/KernelSU-Next $([[ $USE_KSU_SUSFS == true ]] && echo next-susfs || echo next) ;;
+    "xx") install_ksu backslashxx/KernelSU $([[ $USE_KSU_SUSFS == true ]] && echo 12074+sus155 || echo magic) ;;
+    *) error "Invalid KSU value: $KSU" ;;
+    esac
+fi
+
 # Apply config for KernelSU manual hook (Requires supported KernelSU)
 if [[ $USE_KSU_MANUAL_HOOK == "true" ]]; then
+    cd $workdir/common
+
+    # manual hook config for melt
+    if grep -q "CONFIG_KSU_MANUAL_HOOK" fs/exec.c; then
+        sed -i "/^endmenu/i\\
+        config KSU_MANUAL_HOOK\\
+        \tbool \"Manual hooking without kprobes\"\\
+        \tdepends on KSU && KSU != m\\
+        \tdepends on KPROBES\\
+        \tdefault n\\
+        \thelp\\
+        \t  Keep KPROBES enabled but do not use KPROBES to implement\\
+        \t  the hooks required by KernelSU, but instead hook them manually.\\
+        " "$workdir/common/drivers/kernelsu/Kconfig"
+    fi
+
     config --file $DEFCONFIG_FILE --enable CONFIG_KSU_MANUAL_HOOK
     config --file $DEFCONFIG_FILE --disable CONFIG_KSU_WITH_KPROBE
     config --file $DEFCONFIG_FILE --disable CONFIG_KSU_SUSFS_SUS_SU
@@ -201,21 +233,10 @@ if [[ $USE_KSU_MANUAL_HOOK == "true" ]]; then
 
         fi
     fi
+
+    cd $workdir
 fi
 
-# Install KernelSU driver
-cd $workdir
-if [[ $KSU != "None" ]]; then
-    log "Installing KernelSU..."
-
-    case "$KSU" in
-    "Official") install_ksu tiann/KernelSU ;;
-    "Rissu") install_ksu rsuntk/KernelSU $([[ $USE_KSU_SUSFS == true ]] && echo susfs-v1.5.5 || echo main) ;;
-    "Next") install_ksu rifsxd/KernelSU-Next $([[ $USE_KSU_SUSFS == true ]] && echo next-susfs || echo next) ;;
-    "xx") install_ksu backslashxx/KernelSU $([[ $USE_KSU_SUSFS == true ]] && echo 12074+sus155 || echo magic) ;;
-    *) error "Invalid KSU value: $KSU" ;;
-    esac
-fi
 
 # SUSFS for KSU setup
 if [[ $USE_KSU_SUSFS == "true" && -z $KSU ]]; then
@@ -257,6 +278,7 @@ elif [[ -n $KSU && $USE_KSU_SUSFS == "true" ]]; then
 fi
 
 cd $workdir/common
+
 # Remove unnecessary code from scripts/setlocalversion
 if grep -q '[-]dirty' scripts/setlocalversion; then
     sed -i 's/-dirty//' scripts/setlocalversion
