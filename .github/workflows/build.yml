@@ -207,10 +207,10 @@ jobs:
             local PREFIX=$1
             echo "Checking caches for: $PREFIX"
             CACHE_KEYS=$(gh cache list --json key,createdAt | jq -r "
-              sort_by(.createdAt) | 
-              reverse | 
-              map(select(.key | startswith(\"$PREFIX\"))) | 
-              .[2:] | 
+              sort_by(.createdAt) |
+              reverse |
+              map(select(.key | startswith(\"$PREFIX\"))) |
+              .[2:] |
               .[].key"
             )
             for key in $CACHE_KEYS; do
