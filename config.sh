@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Kernel name
-KERNEL_NAME="BoAA-1.1-BETA"
+KERNEL_NAME="BoAA-1.2-BETA"
 
 # GKI Version
 GKI_VERSION="android12-5.10"
@@ -39,7 +39,7 @@ AOSP_CLANG_SOURCE="r547379" # Should be version number or direct link to clang t
 
 # Custom clang
 USE_CUSTOM_CLANG="true"
-CUSTOM_CLANG_SOURCE="https://github.com/Rv-Project/RvClang/releases/download/20.1.0/RvClang-20.1.0-bolt-pgo-full_lto.tar.gz"
+CUSTOM_CLANG_SOURCE="https://github.com/Rv-Project/RvClang/releases/download/20.1.1/RvClang-20.1.1-bolt-pgo-full_lto.tar.gz"
 CUSTOM_CLANG_BRANCH=""
 
 # Zip name
