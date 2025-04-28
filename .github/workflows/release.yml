@@ -98,10 +98,10 @@ jobs:
             Kernel Source
             -> Repo: [here](${{ env.KERNEL_REPO }})
             -> Last Commit: [here](${{ env.KERNEL_LAST_COMMIT }})
-            
+
             #### Notes
             -> This kernel only for GKI ${{ env.GKI_VERSION }} devices
-            
+
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
 
